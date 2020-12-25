@@ -1,0 +1,63 @@
+
+; ******** Source: main.asm
+     1                                    *=$2001
+     2  2001 1120                         !word endLine
+     3  2003 0100                         !word 1
+     4  2005 fe02                         !byte $fe,$02
+     5  2007 303a                         !text "0:"
+     6  2009 9e                           !byte $9e
+     7  200a 38323234                     !text "8224"
+     8  200e 00                           !byte 0
+     9  200f 0000                         !word 0
+    10                          endLine   
+    11                          
+    12                                      *=$2020
+    13                          
+    14  2020 78                             sei
+    15                          
+    16  2021 7b                             tba
+    17  2022 48                             pha
+    18  2023 a924                           lda   #$24
+    19  2025 5b                             tab
+    20                          
+    21  2026 a935                           lda #$35
+    22  2028 8501                           sta $01
+    23                          
+    24  202a a900                           lda #$00
+    25  202c aa                             tax 
+    26  202d a8                             tay 
+    27  202e 4b                             taz 
+    28  202f 5c                             map
+    29  2030 ea                             eom
+    30                          
+    31  2031 a9a0                           lda   #$A0
+    32  2033 85fc                           sta   $FC
+    33  2035 a9f8                           lda   #$F8
+    34  2037 85fd                           sta   $FD
+    35  2039 a901                           lda   #$01
+    36  203b 85fe                           sta   $FE
+    37                          
+    38  203d 20cfff                         jsr   $FFCF
+    39  2040 8d0008                         sta   $0800
+    40                          
+    41  2043 204920                         jsr printtext
+    42  2046 68                             pla
+    43  2047 5b                             tab
+    44  2048 60                             rts
+    45                          
+    46                          
+    47  2049 a200               printtext   ldx #$00
+    48  204b a000                           ldy #0
+    49  204d a300                           ldz #0
+    50  204f bd6320             loop        lda .string,x
+    51  2052 f00e                           beq exit
+    52  2054 9da008                         sta $08A0,x
+    53  2057 a92a                           lda  #42
+    54  2059 ea92fc                         sta [$FC],z
+    55  205c e8                             inx
+    56  205d c8                             iny
+    57  205e 1b                             inz
+    58  205f 4c4f20                         jmp loop
+    59  2062 60                 exit        rts
+    60                          
+    61  2063 08050c0c0f20170f....string     !scr "hello world", 0
