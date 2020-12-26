@@ -1,3 +1,7 @@
+;
+;	This has been hacked to autostart via (W)arm start, e.g. JMP $0000
+;
+;
 ;               this compiles under the portable 64tass assembler.
 
 ;        note: the original text indicated that the fcxx segment should be
@@ -1604,7 +1608,9 @@ PrintPrompt: 									; print boot message.
 	cpy  #BootTextEnd-BootText
 	bne  PrintPrompt
 
-	jsr  InputCharacter 						; get a character
+	;jsr  InputCharacter 						; get a character
+	jmp  BASIC_WarmStart
+
 	and  #$DF 									; capitalise it.
 	cmp  #'D'
 	bne  NotDKey

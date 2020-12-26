@@ -1,7 +1,7 @@
 
 ; 64tass Turbo Assembler Macro V1.55.2200 listing file
 ; 64tass -Werror -q -c -b -o cegmon.rom -L cegmon.lst cegmon.asm
-; Fri Dec 25 21:00:10 2020
+; Sat Dec 26 06:37:27 2020
 
 ;Offset	;Hex		;Monitor	;Source
 
@@ -63,10 +63,10 @@
 =0					ScreenSize = 0  							; screen size 0=1k 1=2k
 =0					FirstVisible = 0 							; set screen offset
 =32					ColumnsVisible = 32 						; set columns to display
-=25					RowsVisible = 25  							; set rows to display
+=32					RowsVisible = 32  							; set rows to display
 =31					LineLengthMinus1 = ColumnsVisible-1 		; index of last character
 =53248					ScreenVisibleTop = Screen+FirstVisible 		; positions within screen.
-=54016					ScreenVisibleBottom = (RowsVisible-1)*LineWidth+ScreenVisibleTop
+=54240					ScreenVisibleBottom = (RowsVisible-1)*LineWidth+ScreenVisibleTop
 =54272					ScreenMemoryEnd =  (ScreenSize+1)*1024+Screen
 .f800					RuboutCode:
 .f800	a5 0e		lda $0e			lda  CharsSinceCR 							; adjust chars since CR
@@ -569,7 +569,7 @@
 >fbba	7b fe					.word VectorSetSave                         ; 220 save
 >fbbc	1f					.byte LineLengthMinus1                      ; 222 length of line - 1
 >fbbd	00 d0					.word ScreenVisibleTop                      ; 223 top of screen
->fbbf	00 d3					.word ScreenVisibleBottom                   ; 225 bottom of screen
+>fbbf	e0 d3					.word ScreenVisibleBottom                   ; 225 bottom of screen
 .fbc1	bd 00 d0	lda $d000,x		lda  ScreenVisibleTop,X                     ; 227 code to copy to from/screen, stops flash?
 .fbc4	9d 00 d0	sta $d000,x		sta  ScreenVisibleTop,X                     ; 22a
 .fbc7	ca		dex			dex  ; 22                                   ; 22d
@@ -1075,7 +1075,7 @@
 .ff16	c8		iny			iny
 .ff17	c0 16		cpy #$16		cpy  #BootTextEnd-BootText
 .ff19	d0 f5		bne $ff10		bne  PrintPrompt
-.ff1b	20 eb ff	jsr $ffeb		jsr  InputCharacter 						; get a character
+.ff1b	4c 00 00	jmp $0000		jmp  BASIC_WarmStart
 .ff1e	29 df		and #$df		and  #$DF 									; capitalise it.
 .ff20	c9 44		cmp #$44		cmp  #'D'
 .ff22	d0 03		bne $ff27		bne  NotDKey
@@ -1169,7 +1169,7 @@
 .ffdc	ca		dex			dex
 .ffdd	d0 f4		bne $ffd3		bne  CopyHomeInfo
 .ffdf	60		rts			rts
->ffe0	00					.byte <ScreenVisibleBottom                  ; cursor start
+>ffe0	e0					.byte <ScreenVisibleBottom                  ; cursor start
 >ffe1	1f					.byte LineLengthMinus1                      ; line length - 1
 >ffe2	00					.byte ScreenSize  							; screen size 0=1k 1=2k
 .ffe3					PrintCurrentAddr:

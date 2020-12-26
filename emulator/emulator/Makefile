@@ -36,6 +36,8 @@ CC = g++
 
 all: emulator
 	$(CDEL) memory.dump
+	64tass -q -o test.prg test.asm 
+	$(CCOPY) $(APPNAME) ..$(S)..$(S)/bin
 
 emulator: 6502$(S)__6502opcodes.h include$(S)/monitor_rom.inc $(APPNAME)
 

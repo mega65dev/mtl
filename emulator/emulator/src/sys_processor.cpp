@@ -206,8 +206,13 @@ static void CPULoadChunk(FILE *f,BYTE8* memory,int count) {
 }
 void CPULoadBinary(char *fileName) {
 	FILE *f = fopen(fileName,"rb");
+	WORD16 addr = fgetc(f);
+	addr = addr + (fgetc(f) << 8);
+	ramMemory[0] = 0x4C;
+	ramMemory[1] = addr & 0xFF;
+	ramMemory[2] = addr >> 8;
 	if (f != NULL) {
-		CPULoadChunk(f,ramMemory,RAMSIZE);
+		CPULoadChunk(f,ramMemory+addr,RAMSIZE-addr);
 		fclose(f);
 		resetProcessor();
 	}
