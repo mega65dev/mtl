@@ -6,7 +6,7 @@ ASMCMD = -f cbm --cpu m65 -o main.prg -r main.lst main.asm
 
 test : $(wildcard *.asm)
 	$(ASSEMBLER) -Dtarget=2 $(ASMCMD)
-	../bin/testbed main.prg
+	../bin/testbed main.prg go
 	rm -f dump.mem memory.dump
 
 xemu : $(wildcard *.asm)
