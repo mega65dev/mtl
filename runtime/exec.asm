@@ -41,7 +41,8 @@ execLoop
 		bcc 	+
 		inc 	pctr+1
 +
-		!byte 	$03
+
+		see	
 
 		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
 		lsr
@@ -78,4 +79,6 @@ notImplemented								; come here when not implemented.
 		ldx 	#$EE
 		txa
 		tay
-		!byte 	$03
+		see
+halt
+		jmp 	halt

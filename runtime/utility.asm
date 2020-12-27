@@ -45,7 +45,7 @@ _CLMClear:
 
 ShowDebugInfo:
 		lda 	pctr+1
-		jsr 	PrintHexSpace
+		jsr 	PrintHex
 		lda 	pctr
 		jsr 	PrintHex
 		lda 	instr+1
@@ -56,6 +56,8 @@ ShowDebugInfo:
 		jsr 	PrintHexSpace
 		lda 	register
 		jsr 	PrintHex
+		lda 	#58
+		jsr 	PrintCharacter
 		rts		
 
 ; ***************************************************************************************************************

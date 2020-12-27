@@ -46,29 +46,57 @@ boot
 PrintCharacter
 	pha
 	phx
+	phy
 	phz
 
-	ldx     charPos                         ; Z X offset into first 256 chars
-	ldz     charPos
-	inc     charPos
 	and     #63                             ; handle PETSCII
-	sta     $0800,x
+	pha
 
-	lda     #$00                            ; write colour to $01F800 (Color RAM)
-	sta     myTemp4
-	lda     #$F8
+	lda 	charPos
+	sta 	myTemp4
+	lda 	charPos+1
+	clc
+	adc 	#$08
+	sta 	myTemp4+1
+	pla
+	ldy 	#0
+	sta 	(myTemp4),y
+
+				                            ; write colour to $01F800 (Color RAM)
+	clc
+	lda 	charPos+1
+	adc 	#$F8
 	sta     myTemp4+1
 	lda     #$01
 	sta     myTemp4+2
 	lda     #$00
+	taz
 	sta     myTemp4+3
 	lda     #$01
 	sta     [myTemp4],z
+
+	inc 	charPos
+	bne 	_PCNoCarry
+	inc 	charPos+1
+_PCNoCarry
+	lda 	charPos
+	cmp 	#$D0
+	bne 	_PCExit
+	lda 	charPos+1
+	cmp 	#7
+	bne 	_PCExit
+
+
+	lda 	#0
+	sta 	charPos
+	sta 	charPos+1
+_PCExit:	
 	plz
+	ply
 	plx
 	pla
 	rts
 
 charPos
-	!byte   0
+	!word 	0
 
