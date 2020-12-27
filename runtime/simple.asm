@@ -1,113 +1,139 @@
 ; ***************************************************************************************************************
 ; ***************************************************************************************************************
 ;
-;      Name:       main.asm
-;      Purpose:    MTL Runtime (slow 'n' lazy version, NMOS 6502 only no optimisation)
-;      Created:    26th December 2020
+;      Name:       simple.asm
+;      Purpose:    Simple Opcodes
+;      Created:    27th December 2020
 ;      Author:     Paul Robson (paul@robsons.org.uk)
 ;
 ; ***************************************************************************************************************
 ; ***************************************************************************************************************
 
-
 ; ***************************************************************************************************************
 ;
-;					Runtime Header starts here (if not run in test handler, target #0)
-;
-; ***************************************************************************************************************
-
-start
-		jmp 	boot 						; +0  is jump to initial code
-		!byte 	0
-execRoutine		
-		jmp 	execRuntime 				; +4  is opcode execution routine
-		!byte 	0
-
-firstProcedure		
-		!word	codeSpace 					; +8  is the address of the first procedure.
-loadAddress		
-		!word 	start  						; +10 is the load address
-initStart
-		!word 	UnnitialisedVariables 		; +12 is the start of the uninitialised variables.
-initEnd
-		!word 	EndVariableSpace 			; +14 is the end of the uninitialised variables.
-
-		* = start+64
-
-; ***************************************************************************************************************
-;
-;								Import the system specific code
+;										0x LDR - Load Register
 ;
 ; ***************************************************************************************************************
 
-		!if target=1 {
-		!source "bootmega.asm"
-		} 
-		!if target=2 {
-		!source "boottest.asm"
-		}
-		!src 	"data.asm"
+Command_LDR:
+		jsr 	EffectiveAddress
+		lda 	(eac),y
+		sta 	register+1
+		lda 	(eac,x)
+		sta 	register		
+		jmp 	execLoop
 
 ; ***************************************************************************************************************
 ;
-;									Runtime code starts here
+;										1x STR - Store Register
 ;
 ; ***************************************************************************************************************
 
-runApplication		
-		ldx 	#$FF 						; reset the 6502 stack.
-		txs
-		jsr 	ClearMemory 				; erase all memory.
-		jsr 	runFirstProc 				; run the first procedure
-halted:	jmp 	halted		 				; and stop.
-
-runFirstProc		
-		jmp 	(firstProcedure) 			; execute the first procedure
+Command_STR:
+		jsr 	EffectiveAddress
+		lda 	register+1
+		sta 	(eac),y
+		lda 	register		
+		sta 	(eac,x)
+		jmp 	execLoop
 
 ; ***************************************************************************************************************
 ;
-;											Includes
+;										2x ADD - Add Register
 ;
 ; ***************************************************************************************************************
 
-		!src 	"exec.asm"
-		!src 	"simple.asm"
-		!src 	"branch.asm"
-		!src 	"utility.asm"
+Command_ADD:
+		jsr 	EffectiveAddress
+		clc
+		lda 	register		
+		adc 	(eac,x)
+		sta 	register
+		lda 	register+1
+		adc 	(eac),y
+		sta		register+1
+		jmp 	execLoop
 
 ; ***************************************************************************************************************
 ;
-;						Testing code goes here (this is for non runtime builds)
+;										3x SUB - Sub from Register
 ;
 ; ***************************************************************************************************************
 
-codeSpace:
-		jsr 	execRuntime
-		+cmd 	0,1
-		+cmd 	3,0
-		+cmd 	11,-4
-		!word 	$FFFF
+Command_SUB:
+		jsr 	EffectiveAddress
+		sec
+		lda 	register		
+		sbc 	(eac,x)
+		sta 	register
+		lda 	register+1
+		sbc 	(eac),y
+		sta		register+1
+		jmp 	execLoop
 
 ; ***************************************************************************************************************
 ;
-;					Then the variables with predefined values, constants, addresses etc.
+;										6x AND - And Register
 ;
 ; ***************************************************************************************************************
 
-		!align 	255,0 						; put on page boundary.
-SystemVariables:
-		!word 	$0001
-		!word 	$002A
-		!word 	$0000
+Command_AND:
+		jsr 	EffectiveAddress
+		lda 	register		
+		and 	(eac,x)
+		sta 	register
+		lda 	register+1
+		and 	(eac),y
+		sta		register+1
+		jmp 	execLoop
 
 ; ***************************************************************************************************************
 ;
-;									Then the uninitialised variables
+;										7x ORR - Or Register
 ;
 ; ***************************************************************************************************************
 
-UnnitialisedVariables:
-		!if target > 0 { 					; allocate memory if not runtime build.
-			!fill 	variableMax * 2,$FF
-		}
-EndVariableSpace:
+Command_ORR:
+		jsr 	EffectiveAddress
+		lda 	register		
+		ora 	(eac,x)
+		sta 	register
+		lda 	register+1
+		ora 	(eac),y
+		sta		register+1
+		jmp 	execLoop
+
+; ***************************************************************************************************************
+;
+;										8x XOR - ExOr Register
+;
+; ***************************************************************************************************************
+
+Command_XOR:
+		jsr 	EffectiveAddress
+		lda 	register		
+		eor 	(eac,x)
+		sta 	register
+		lda 	register+1
+		eor 	(eac),y
+		sta		register+1
+		jmp 	execLoop
+
+; ***************************************************************************************************************
+;
+;						Effective address calc on instruction, set X = 0 Y = 1
+;
+; ***************************************************************************************************************
+
+EffectiveAddress:
+		lda 	instr
+		asl 	
+		sta 	eac
+		lda 	instr+1
+		and 	#$0F
+		rol 	
+		adc 	#SystemVariables >> 8
+		sta 	eac+1
+		ldy 	#1
+		ldx 	#0
+		rts

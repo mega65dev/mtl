@@ -42,7 +42,6 @@ execLoop
 		inc 	pctr+1
 +
 
-		see	
 
 		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
 		lsr
@@ -55,21 +54,22 @@ execLoop
 		sta 	temp0
 		lda 	execTable+1,x
 		sta 	temp0+1
+
 		jmp 	(temp0)
 
 execTable
-		!word 	notImplemented 				; $0x
-		!word 	notImplemented 				; $1x
-		!word 	notImplemented 				; $2x
-		!word 	notImplemented 				; $3x
+		!word 	Command_LDR  				; $0x Load Register
+		!word 	Command_STR  				; $1x Store Register
+		!word 	Command_ADD 				; $2x Add to Register
+		!word 	Command_SUB 				; $3x Sub from Register
 		!word 	notImplemented 				; $4x
 		!word 	notImplemented 				; $5x
-		!word 	notImplemented 				; $6x
-		!word 	notImplemented 				; $7x
-		!word 	notImplemented 				; $8x
-		!word 	notImplemented 				; $9x
-		!word 	notImplemented 				; $Ax
-		!word 	notImplemented 				; $Bx
+		!word 	Command_AND 				; $6x And into Register
+		!word 	Command_ORR 				; $7x Or with Register
+		!word 	Command_XOR 				; $8x Xor into Register
+		!word 	Command_BRA 				; $9x Branch always
+		!word 	Command_BEQ 				; $Ax Branch zero
+		!word 	Command_BPL 				; $Bx Branch positive
 		!word 	notImplemented 				; $Cx
 		!word 	notImplemented 				; $Dx
 		!word 	notImplemented 				; $Ex
