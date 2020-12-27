@@ -279,7 +279,7 @@
     42  21d7 e611               		inc 	pctr+1
     43                          +
     44                          
-    45  21d9 03                 		see
+    45  21d9 03                 		see	
     46                          
     47  21da a517               		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
     48  21dc 4a                 		lsr
