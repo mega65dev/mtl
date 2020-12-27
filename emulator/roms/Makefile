@@ -18,5 +18,5 @@ all : cegmon.rom
 	
 cegmon.rom : cegmon.asm
 	64tass -Werror -q -c -b -o $@ -L cegmon.lst $<
-	#$(CCOPY) cegmon.rom ..$(S)emulator$(S)monitor.rom
+#	$(CCOPY) cegmon.rom ..$(S)emulator$(S)monitor.rom
 

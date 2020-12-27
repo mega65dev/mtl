@@ -1,3 +1,18 @@
+ifeq ($(OS),Windows_NT)
+CCOPY = copy
+CMAKE = mingw32-make
+CDEL = del /Q
+CDELQ = >NUL
+APPSTEM = .exe
+S = \\
+else
+CCOPY = cp
+CDEL = rm -f
+CDELQ = 
+CMAKE = make
+APPSTEM =
+S = /
+endif
 
 .PHONY: prebuild xemu fpga test
 
@@ -7,17 +22,17 @@ ASMCMD = -f cbm --cpu m65 -o main.prg -r main.lst main.asm
 test : $(wildcard *.asm)
 	$(ASSEMBLER) -Dtarget=2 --setpc 8448 $(ASMCMD)
 	../bin/testbed main.prg go
-	rm -f dump.mem memory.dump
+	$(CDEL) dump.mem memory.dump $(CDELQ)
 
 xemu : $(wildcard *.asm)
 	$(ASSEMBLER) -Dtarget=1 --setpc 8448 $(ASMCMD)
 	python addheader.py main.prg
-	../bin/xmega65.native -prg main.prg -besure
-	rm -f dump.mem memory.dump
+	../bin/xmega65 -prg main.prg -besure
+	$(CDEL) dump.mem memory.dump $(CDELQ)
 
 fpga : $(wildcard *.asm)
 	$(ASSEMBLER) -Dtarget=1 --setpc 8448 $(ASMCMD)
 	python addheader.py main.prg
-	../bin/m65 -F -r main.prg
-	rm -f dump.mem memory.dump
+	../bin/m65 -l COM4 -F -r main.prg
+	$(CDEL) dump.mem memory.dump $(CDELQ)
 	
