@@ -2,21 +2,13 @@
 ; ***************************************************************************************************************
 ;
 ;      Name:       main.asm
-;      Purpose:    MTL Runtime
+;      Purpose:    MTL Runtime (slow 'n' lazy version, NMOS 6502 only no optimisation)
 ;      Created:    26th December 2020
 ;      Author:     Paul Robson (paul@robsons.org.uk)
 ;
 ; ***************************************************************************************************************
 ; ***************************************************************************************************************
 
-	!if target=1 {
-	!source "bootmega.asm"
-	} 
-	!if target=2 {
-	!source "boottest.asm"
-	}
-
-	!src 	"data.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -25,14 +17,36 @@
 ; ***************************************************************************************************************
 
 start
-		jmp 	runApplication 				; +0  is jump to initial code
+		jmp 	boot 						; +0  is jump to initial code
 		!byte 	0
-		jmp 	$0000 						; +4  is opcode execution routine
+execRoutine		
+		jmp 	execRuntime 				; +4  is opcode execution routine
 		!byte 	0
-		!word	$0000 						; +8  is the address of the first procedure.
+
+firstProcedure		
+		!word	codeSpace 					; +8  is the address of the first procedure.
+loadAddress		
 		!word 	start  						; +10 is the load address
+initStart
 		!word 	UnnitialisedVariables 		; +12 is the start of the uninitialised variables.
+initEnd
 		!word 	EndVariableSpace 			; +14 is the end of the uninitialised variables.
+
+		* = start+64
+
+; ***************************************************************************************************************
+;
+;								Import the system specific code
+;
+; ***************************************************************************************************************
+
+		!if target=1 {
+		!source "bootmega.asm"
+		} 
+		!if target=2 {
+		!source "boottest.asm"
+		}
+		!src 	"data.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -40,54 +54,24 @@ start
 ;
 ; ***************************************************************************************************************
 
-		* = start+64
-
 runApplication		
-		ldx 	#$FF
+		ldx 	#$FF 						; reset the 6502 stack.
 		txs
-		+set16 	pctr,1042
-		+inc16  pctr
-		ldx     #0
-		lda     #42
-		sta     $FFC2 
-loop    lda     $2020,x
-		jsr     PrintHexSpace
-		inx
-		cpx     #32
-		bne     loop        
-halt
-		jmp     halt
+		jsr 	ClearMemory 				; erase all memory.
+		jsr 	runFirstProc 				; run the first procedure
+halted:	jmp 	halted		 				; and stop.
+
+runFirstProc		
+		jmp 	(firstProcedure) 			; execute the first procedure
 
 ; ***************************************************************************************************************
 ;
-;						PrintA as hex constant with/without leading space
+;											Includes
 ;
 ; ***************************************************************************************************************
 
-PrintHexSpace:
-		pha
-		lda 	#' '
-		jsr 	PrintCharacter
-		pla
-PrintHex:        
-		pha
-		lsr     
-		lsr     
-		lsr     
-		lsr     
-		jsr     _PrintNibble
-		pla
-_PrintNibble:
-		pha
-		and     #15
-		cmp     #10
-		bcc     +
-		adc     #6
-+
-		adc     #48
-		jsr     PrintCharacter
-		pla 
-		rts
+		!src 	"exec.asm"
+		!src 	"utility.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -95,7 +79,9 @@ _PrintNibble:
 ;
 ; ***************************************************************************************************************
 
-CodeSpace:
+codeSpace:
+		jsr 	execRuntime
+		+cmd 	0,1
 
 ; ***************************************************************************************************************
 ;
@@ -105,6 +91,8 @@ CodeSpace:
 
 		!align 	255,0 						; put on page boundary.
 SystemVariables:
+		!word 	$1234
+		!word 	$ABC2
 
 ; ***************************************************************************************************************
 ;
@@ -116,5 +104,4 @@ UnnitialisedVariables:
 		!if target > 0 { 					; allocate memory if not runtime build.
 			!fill 	variableMax * 2,$FF
 		}
-
 EndVariableSpace:

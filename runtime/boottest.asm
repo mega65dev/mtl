@@ -13,10 +13,9 @@ zeroPageStart = $10
 
 variableMax = 32 								; how many variables allowed in test version
 
-		*=$2020
-		!byte   $03
+boot
 		sei
-		jmp     start
+		jmp     runApplication
 
 ; ***************************************************************************************************************
 ;
@@ -26,4 +25,3 @@ variableMax = 32 								; how many variables allowed in test version
 
 PrintCharacter
 		jmp     $FFEE
-

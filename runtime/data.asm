@@ -17,9 +17,14 @@
 ; ***************************************************************************************************************
 
 pctr = zeroPageStart						; program counter (address of instruction)
+
 register = zeroPageStart+2 					; current register value.
+
 eac = zeroPageStart+4 						; effective address calculation.
+
 instr = zeroPageStart+6 					; current instruction.
+
+temp0 = zeroPageStart+8 					; target address.
 
 ; ***************************************************************************************************************
 ;
@@ -40,4 +45,9 @@ instr = zeroPageStart+6 					; current instruction.
 		inc 	1+(.addr)
 +
 }
+
+!macro cmd 	.cmdid,.addr {
+		!byte 	(.cmdid << 4)+((.addr >> 8) & 0x0F)
+		!byte 	(.addr & $FF)
+}		
 

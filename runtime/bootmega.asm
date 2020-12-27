@@ -20,19 +20,8 @@ variableMax = 32 								; how many variables allowed in test version
 ;                                               Header, a BASIC line
 ;
 ; ***************************************************************************************************************
-						
-	*=$2001
-	!word   endLine                         ; link to next line
-	!word   1                               ; line number
-	!byte   $fe,$02                         ; BANK
-	!text   "0:"                            ; 0:
-	!byte   $9e                             ; SYS
-	!text   "8224"                          ; 8224 (e.g. $2020)
-	!byte   0                               ; end of line
-	!word   0                               ; end of program.
-endLine   
 
-	*=$2020
+boot						
 	sei                                     ; disable Interrupts
 	lda     #$35                            ; C64 RAM visibility/tape off. 
 	sta     $01
@@ -46,7 +35,7 @@ endLine
 
 	lda     #$FE                            ; use page $FExx as ZP.
 	tab
-	jmp     start
+	jmp     runApplication
 
 ; ***************************************************************************************************************
 ;
@@ -82,3 +71,4 @@ PrintCharacter
 
 charPos
 	!byte   0
+
