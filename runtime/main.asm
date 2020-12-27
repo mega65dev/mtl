@@ -9,6 +9,9 @@
 ; ***************************************************************************************************************
 ; ***************************************************************************************************************
 
+zeroPageStart = $10                             ; zero page allocation here.
+
+		!src 	"data.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -25,12 +28,22 @@ execRoutine
 
 firstProcedure		
 		!word	codeSpace 					; +8  is the address of the first procedure.
+
 loadAddress		
 		!word 	start  						; +10 is the load address
+
 initStart
 		!word 	UnnitialisedVariables 		; +12 is the start of the uninitialised variables.
+
 initEnd
 		!word 	EndVariableSpace 			; +14 is the end of the uninitialised variables.
+
+registerAddress
+		!word 	register					; +16 is the address of the register
+
+nextFreeZeroAddress 	 						
+		!word 	nextFreeZero				; +18 next free zp address.
+
 
 		* = start+64
 
@@ -46,7 +59,6 @@ initEnd
 		!if target=2 {
 		!source "boottest.asm"
 		}
-		!src 	"data.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -72,6 +84,8 @@ runFirstProc
 
 		!src 	"exec.asm"
 		!src 	"simple.asm"
+		!src 	"multiply.asm"
+		!src 	"divide.asm"
 		!src 	"branch.asm"
 		!src 	"utility.asm"
 
@@ -83,9 +97,8 @@ runFirstProc
 
 codeSpace:
 		jsr 	execRuntime
-		+cmd 	0,1
-		+cmd 	3,0
-		+cmd 	11,-4
+		+cmd 	0,0
+		+cmd 	5,1
 		!word 	$FFFF
 
 ; ***************************************************************************************************************
@@ -96,9 +109,9 @@ codeSpace:
 
 		!align 	255,0 						; put on page boundary.
 SystemVariables:
-		!word 	$0001
-		!word 	$002A
-		!word 	$0000
+		!word 	10000
+		!word 	200
+		!word 	40
 
 ; ***************************************************************************************************************
 ;

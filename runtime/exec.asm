@@ -41,8 +41,6 @@ execLoop
 		bcc 	+
 		inc 	pctr+1
 +
-
-
 		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
 		lsr
 		lsr
@@ -51,19 +49,21 @@ execLoop
 		tax
 
 		lda 	execTable,x 				; get address and go there.
-		sta 	temp0
+		sta 	vector
 		lda 	execTable+1,x
-		sta 	temp0+1
+		sta 	vector+1
+		jmp 	(vector)
 
-		jmp 	(temp0)
+vector 										; cannot go in ZP if we move B
+		!word 	0
 
 execTable
 		!word 	Command_LDR  				; $0x Load Register
 		!word 	Command_STR  				; $1x Store Register
 		!word 	Command_ADD 				; $2x Add to Register
 		!word 	Command_SUB 				; $3x Sub from Register
-		!word 	notImplemented 				; $4x
-		!word 	notImplemented 				; $5x
+		!word 	Command_MUL 				; $4x Multiply into Register
+		!word 	Command_DIV 				; $5x Divide into Register
 		!word 	Command_AND 				; $6x And into Register
 		!word 	Command_ORR 				; $7x Or with Register
 		!word 	Command_XOR 				; $8x Xor into Register

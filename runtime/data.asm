@@ -24,7 +24,11 @@ eac = zeroPageStart+4 						; effective address calculation.
 
 instr = zeroPageStart+6 					; current instruction.
 
-temp0 = zeroPageStart+8 					; target address.
+temp0 = zeroPageStart+8 					; working registers.
+
+temp1 = zeroPageStart+10 
+
+nextFreeZero = zeroPageStart + 16 			; memory we can use.
 
 ; ***************************************************************************************************************
 ;

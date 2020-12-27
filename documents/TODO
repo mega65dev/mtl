@@ -1,0 +1,6 @@
+TODO:
+	CALL and test it.
+	Requires RETURN to be defined, and some method of doing so.
+	Shift Left/Right, Inc and Dec.
+	Add address of Register.
+	Add next free Zero Page.	
