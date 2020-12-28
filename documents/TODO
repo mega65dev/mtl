@@ -1,6 +1,5 @@
 TODO:
-	CALL and test it.
-	Requires RETURN to be defined, and some method of doing so.
+	Why doesn't lda#42 ; jsr $FFD2 work ?
 	Shift Left/Right, Inc and Dec.
 	Add address of Register.
 	Add next free Zero Page.	

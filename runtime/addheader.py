@@ -24,22 +24,23 @@ for f in sys.argv[1:]:
 	header[3] = 1 												# line number 1.
 	header[4] = 0
 	#
-	header[5] = 0xFE 											# BANK 0:SYS
-	header[6] = 0x02
-	header[7] = ord('0')
-	header[8] = ord(':')
-	header[9] = 0x9E
+	tokens = ""
+	tokens = tokens + chr(0xFE)+chr(0x02)+"0:" 					# BANK 0:
 	#
-	laText = str(loadAddress)									# write load address out.
-	for i in range(0,len(laText)):
-		header[i+10] = ord(laText[i])
-	header[len(laText)+10] = 0 									# end of line.
+	tokens = tokens + chr(0x9E)+str(loadAddress) 				# SYS <run address>
 	#
-	header[1] = len(laText)+10 									# link to next line (next link zero already)
+	for i in range(0,len(tokens)):
+		header[i+5] = ord(tokens[i])
+	header[len(tokens)+5] = 0 									# end of line.
+	#
+	header[1] = len(tokens)+6 									# link to next line (next link zero already)
 	header[2] = (loadAddress >> 8) - 1							# in the previous page.
 	#
 	h = open(f,"wb") 											# now write file back out.
 	h.write(bytes([1,header[2]]))								# start with load address.
-	h.write(bytes(header[1:]))										# then header
+	h.write(bytes(header[1:]))									# then header
 	h.write(bytes(code))										# then the body
 	h.close()
+	#
+#	for i in range(1,19):
+#		print(i,header[i])
