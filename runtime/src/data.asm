@@ -40,7 +40,7 @@ nextFreeZero = zeroPageStart + 16 			; memory we can use.
 		lda 	#((.value) & $FF)
 		sta 	0+(.addr)
 		lda 	#((.value) >> 8)
-		sta 	1+(.addr)
+		sta 	1+(.addr)	
 }
 
 !macro 	inc16 .addr {
@@ -55,3 +55,15 @@ nextFreeZero = zeroPageStart + 16 			; memory we can use.
 		!byte 	(.addr & $FF)
 }		
 
+!macro call .addr {
+		!byte 	((.addr >> 10) & $3F)+$C0
+		!byte 	(.addr >> 2) & $FF		
+}
+
+!macro define .name,.count,.first {
+		!word 	0 							; link to next (filled in later)
+		!byte 	.count 						; number of parameters
+		!byte 	.first 						; first parameter address if more than one (last in R)
+		!text 	.name,0 					; ASCIIZ name.
+		!align 	3,0 
+}

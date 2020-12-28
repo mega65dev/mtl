@@ -11,7 +11,7 @@
 
 zeroPageStart = $10                             ; zero page allocation here.
 
-		!src 	"data.asm"
+		!src 	"src/data.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -44,6 +44,8 @@ registerAddress
 nextFreeZeroAddress 	 						
 		!word 	nextFreeZero				; +18 next free zp address.
 
+routineList 								
+		!word 	0							; +20 linked list of routines built in/library.
 
 		* = start+64
 
@@ -54,10 +56,10 @@ nextFreeZeroAddress
 ; ***************************************************************************************************************
 
 		!if target=1 {
-		!source "bootmega.asm"
+		!source "src/bootmega.asm"
 		} 
 		!if target=2 {
-		!source "boottest.asm"
+		!source "src/boottest.asm"
 		}
 
 ; ***************************************************************************************************************
@@ -82,12 +84,13 @@ runFirstProc
 ;
 ; ***************************************************************************************************************
 
-		!src 	"exec.asm"
-		!src 	"simple.asm"
-		!src 	"multiply.asm"
-		!src 	"divide.asm"
-		!src 	"branch.asm"
-		!src 	"utility.asm"
+		!src 	"src/exec.asm"
+		!src 	"src/simple.asm"
+		!src 	"src/multiply.asm"
+		!src 	"src/divide.asm"
+		!src 	"src/branch.asm"
+		!src 	"src/call.asm"
+		!src 	"src/utility.asm"
 
 ; ***************************************************************************************************************
 ;
@@ -97,9 +100,19 @@ runFirstProc
 
 codeSpace:
 		jsr 	execRuntime
-		+cmd 	0,0
-		+cmd 	5,1
-		!word 	$FFFF
+		+cmd 	0,1
+		+call 	cs2
+		+call 	cs2
+		+call 	cs2
+		+call 	PrintHexCode
+		+call 	PrintHexCode
+		+call	HaltCode
+
+		!align 	3,0
+cs2		
+		jsr 	execRuntime
+		+cmd 	4,2
+		+call 	ReturnCode
 
 ; ***************************************************************************************************************
 ;
@@ -110,8 +123,8 @@ codeSpace:
 		!align 	255,0 						; put on page boundary.
 SystemVariables:
 		!word 	10000
-		!word 	200
-		!word 	40
+		!word 	2
+		!word 	10
 
 ; ***************************************************************************************************************
 ;

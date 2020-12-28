@@ -70,10 +70,10 @@ execTable
 		!word 	Command_BRA 				; $9x Branch always
 		!word 	Command_BEQ 				; $Ax Branch zero
 		!word 	Command_BPL 				; $Bx Branch positive
-		!word 	notImplemented 				; $Cx
-		!word 	notImplemented 				; $Dx
-		!word 	notImplemented 				; $Ex
-		!word 	notImplemented 				; $Fx
+		!word 	Command_CALL 				; $Cx Call 6502 routine
+		!word 	Command_CALL 				; $Dx Call 6502 routine
+		!word 	Command_CALL 				; $Ex Call 6502 routine
+		!word 	Command_CALL 				; $Fx Call 6502 routine
 
 notImplemented								; come here when not implemented.
 		ldx 	#$EE

@@ -14,7 +14,7 @@
     12                          zeroPageStart = $10                             ; zero page allocation here.
     13                          
 
-; ******** Source: data.asm
+; ******** Source: src\data.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
@@ -57,7 +57,7 @@
     40                          		lda 	#((.value) & $FF)
     41                          		sta 	0+(.addr)
     42                          		lda 	#((.value) >> 8)
-    43                          		sta 	1+(.addr)
+    43                          		sta 	1+(.addr)	
     44                          }
     45                          
     46                          !macro 	inc16 .addr {
@@ -72,6 +72,17 @@
     55                          		!byte 	(.addr & $FF)
     56                          }		
     57                          
+    58                          !macro call .addr {
+    59                          		!byte 	((.addr >> 10) & $3F)+$C0
+    60                          		!byte 	(.addr >> 2) & $FF		
+    61                          }
+    62                          
+    63                          !macro define .name,.count,.first {
+    64                          		!word 	0 							; link to next (filled in later)
+    65                          		!byte 	.count 						; number of parameters
+    66                          		!byte 	.first 						; first parameter address if more than one (last in R)
+    67                          		!text 	.name,0 					; ASCIIZ name.
+    68                          		!align 	3,0 
 
 ; ******** Source: main.asm
     14                          
@@ -86,11 +97,11 @@
     23  2100 4c4021             		jmp 	boot 						; +0  is jump to initial code
     24  2103 00                 		!byte 	0
     25                          execRoutine		
-    26  2104 4cb521             		jmp 	execRuntime 				; +4  is opcode execution routine
+    26  2104 4c5621             		jmp 	execRuntime 				; +4  is opcode execution routine
     27  2107 00                 		!byte 	0
     28                          
     29                          firstProcedure		
-    30  2108 b023               		!word	codeSpace 					; +8  is the address of the first procedure.
+    30  2108 c623               		!word	codeSpace 					; +8  is the address of the first procedure.
     31                          
     32                          loadAddress		
     33  210a 0021               		!word 	start  						; +10 is the load address
@@ -117,113 +128,41 @@
     54                          ; ***************************************************************************************************************
     55                          
     56                          		!if target=1 {
+    57                          		!source "src/bootmega.asm"
+    58                          		} 
+    59                          		!if target=2 {
 
-; ******** Source: bootmega.asm
+; ******** Source: src\boottest.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
-     4                          ;      Name:       bootmega.asm
-     5                          ;      Purpose:    MTL Runtime, specific Mega65 code
+     4                          ;      Name:       boottest.asm
+     5                          ;      Purpose:    MTL Runtime, testbed code.
      6                          ;      Created:    26th December 2020
      7                          ;      Author:     Paul Robson (paul@robsons.org.uk)
      8                          ;
      9                          ; ***************************************************************************************************************
     10                          ; ***************************************************************************************************************
     11                          
-    12                          myTemp4 = $02                                   ; temp far pointer
-    13                          variableMax = 32 								; how many variables allowed in test version
-    14                          
-    15                          ; ***************************************************************************************************************
-    16                          ;
-    17                          ;                                               Header, a BASIC line
-    18                          ;
-    19                          ; ***************************************************************************************************************
-    20                          
-    21                          boot						
-    22  2140 78                 	sei                                     ; disable Interrupts
-    23  2141 a935               	lda     #$35                            ; C64 RAM visibility/tape off. 
-    24  2143 8501               	sta     $01
+    12                          zeroPageStart = $10
+    13                          
+    14                          variableMax = 32 								; how many variables allowed in test version
+    15                          
+    16                          boot
+    17  2140 78                 		sei
+    18  2141 4c4721             		jmp     runApplication
+    19                          
+    20                          ; ***************************************************************************************************************
+    21                          ;
+    22                          ;											Print Character in A
+    23                          ;
+    24                          ; ***************************************************************************************************************
     25                          
-    26  2145 a900               	lda     #$00                            ; Reset mapping - lower/upper offsets = 0
-    27  2147 aa                 	tax                                     ; so everything except $Dxxx RAM ?
-    28  2148 a8                 	tay 
-    29  2149 4b                 	taz 
-    30  214a 5c                 	map
-    31  214b ea                 	eom
-    32                          
-    33  214c a9fe               	lda     #$FE                            ; use page $FExx as ZP.
-    34  214e 5b                 	tab
-    35  214f 4ca621             	jmp     runApplication
-    36                          
-    37                          ; ***************************************************************************************************************
-    38                          ;
-    39                          ;                                               Print Character A
-    40                          ;
-    41                          ; ***************************************************************************************************************
-    42                          
-    43                          PrintCharacter
-    44  2152 48                 	pha
-    45  2153 da                 	phx
-    46  2154 5a                 	phy
-    47  2155 db                 	phz
-    48                          
-    49  2156 293f               	and     #63                             ; handle PETSCII
-    50  2158 48                 	pha
-    51                          
-    52  2159 ada421             	lda 	charPos
-    53  215c 8502               	sta 	myTemp4
-    54  215e ada521             	lda 	charPos+1
-    55  2161 18                 	clc
-    56  2162 6908               	adc 	#$08
-    57  2164 8503               	sta 	myTemp4+1
-    58  2166 68                 	pla
-    59  2167 a000               	ldy 	#0
-    60  2169 9102               	sta 	(myTemp4),y
-    61                          
-    62                          				                            ; write colour to $01F800 (Color RAM)
-    63  216b 18                 	clc
-    64  216c ada521             	lda 	charPos+1
-    65  216f 69f8               	adc 	#$F8
-    66  2171 8503               	sta     myTemp4+1
-    67  2173 a901               	lda     #$01
-    68  2175 8504               	sta     myTemp4+2
-    69  2177 a900               	lda     #$00
-    70  2179 4b                 	taz
-    71  217a 8505               	sta     myTemp4+3
-    72  217c a901               	lda     #$01
-    73  217e ea9202             	sta     [myTemp4],z
-    74                          
-    75  2181 eea421             	inc 	charPos
-    76  2184 d003               	bne 	_PCNoCarry
-    77  2186 eea521             	inc 	charPos+1
-    78                          _PCNoCarry
-    79  2189 ada421             	lda 	charPos
-    80  218c c9d0               	cmp 	#$D0
-    81  218e d00f               	bne 	_PCExit
-    82  2190 ada521             	lda 	charPos+1
-    83  2193 c907               	cmp 	#7
-    84  2195 d008               	bne 	_PCExit
-    85                          
-    86                          
-    87  2197 a900               	lda 	#0
-    88  2199 8da421             	sta 	charPos
-    89  219c 8da521             	sta 	charPos+1
-    90                          _PCExit:	
-    91  219f fb                 	plz
-    92  21a0 7a                 	ply
-    93  21a1 fa                 	plx
-    94  21a2 68                 	pla
-    95  21a3 60                 	rts
-    96                          
-    97                          charPos
-    98  21a4 0000               	!word 	0
-    99                          
+    26                          PrintCharacter
+    27  2144 4ceeff             		jmp     $FFEE
 
 ; ******** Source: main.asm
-    57                          
-    58                          		} 
-    59                          		!if target=2 {
-    60                          		!source "boottest.asm"
+    60                          
     61                          		}
     62                          
     63                          ; ***************************************************************************************************************
@@ -233,14 +172,14 @@
     67                          ; ***************************************************************************************************************
     68                          
     69                          runApplication		
-    70  21a6 a2ff               		ldx 	#$FF 						; reset the 6502 stack.
-    71  21a8 9a                 		txs
-    72  21a9 204523             		jsr 	ClearMemory 				; erase all memory.
-    73  21ac 20b221             		jsr 	runFirstProc 				; run the first procedure
-    74  21af 4caf21             halted:	jmp 	halted		 				; and stop.
+    70  2147 a2ff               		ldx 	#$FF 						; reset the 6502 stack.
+    71  2149 9a                 		txs
+    72  214a 205b23             		jsr 	ClearMemory 				; erase all memory.
+    73  214d 205321             		jsr 	runFirstProc 				; run the first procedure
+    74  2150 4c5021             halted:	jmp 	halted		 				; and stop.
     75                          
     76                          runFirstProc		
-    77  21b2 6c0821             		jmp 	(firstProcedure) 			; execute the first procedure
+    77  2153 6c0821             		jmp 	(firstProcedure) 			; execute the first procedure
     78                          
     79                          ; ***************************************************************************************************************
     80                          ;
@@ -249,7 +188,7 @@
     83                          ; ***************************************************************************************************************
     84                          
 
-; ******** Source: exec.asm
+; ******** Source: src\exec.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
@@ -268,76 +207,76 @@
     16                          ; ***************************************************************************************************************
     17                          
     18                          execRuntime
-    19  21b5 18                 		clc
-    20  21b6 68                 		pla 								; get the start address from the call + 1
-    21  21b7 6901               		adc 	#1 							; RTS post increments on return.
-    22  21b9 8510               		sta 	pctr
-    23  21bb 68                 		pla
-    24  21bc 6900               		adc 	#0
-    25  21be 8511               		sta 	pctr+1
+    19  2156 18                 		clc
+    20  2157 68                 		pla 								; get the start address from the call + 1
+    21  2158 6901               		adc 	#1 							; RTS post increments on return.
+    22  215a 8510               		sta 	pctr
+    23  215c 68                 		pla
+    24  215d 6900               		adc 	#0
+    25  215f 8511               		sta 	pctr+1
     26                          
     27                          execLoop
-    28  21c0 a000               		ldy 	#0 							; get instruction (Hi/Lo order)
-    29  21c2 b110               		lda 	(pctr),y
-    30  21c4 8517               		sta 	instr+1
-    31  21c6 c8                 		iny
-    32  21c7 b110               		lda 	(pctr),y
-    33  21c9 8516               		sta 	instr
+    28  2161 a000               		ldy 	#0 							; get instruction (Hi/Lo order)
+    29  2163 b110               		lda 	(pctr),y
+    30  2165 8517               		sta 	instr+1
+    31  2167 c8                 		iny
+    32  2168 b110               		lda 	(pctr),y
+    33  216a 8516               		sta 	instr
     34                          		;
-    35  21cb 206c23             		jsr 	ShowDebugInfo 				; current state if debugging
+    35  216c 208223             		jsr 	ShowDebugInfo 				; current state if debugging
     36                          		;
-    37  21ce a510               		lda 	pctr 						; bump pctr
-    38  21d0 18                 		clc 
-    39  21d1 6902               		adc 	#2
-    40  21d3 8510               		sta 	pctr
-    41  21d5 9002               		bcc 	+
-    42  21d7 e611               		inc 	pctr+1
+    37  216f a510               		lda 	pctr 						; bump pctr
+    38  2171 18                 		clc 
+    39  2172 6902               		adc 	#2
+    40  2174 8510               		sta 	pctr
+    41  2176 9002               		bcc 	+
+    42  2178 e611               		inc 	pctr+1
     43                          +
-    44  21d9 a517               		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
-    45  21db 4a                 		lsr
-    46  21dc 4a                 		lsr
-    47  21dd 4a                 		lsr
-    48  21de 291e               		and 	#$1E 						; force into range
-    49  21e0 aa                 		tax
+    44  217a a517               		lda 	instr+1 					; get instr MSN and double it, so shift right thrice.
+    45  217c 4a                 		lsr
+    46  217d 4a                 		lsr
+    47  217e 4a                 		lsr
+    48  217f 291e               		and 	#$1E 						; force into range
+    49  2181 aa                 		tax
     50                          
-    51  21e1 bdf221             		lda 	execTable,x 				; get address and go there.
-    52  21e4 8df021             		sta 	vector
-    53  21e7 bdf321             		lda 	execTable+1,x
-    54  21ea 8df121             		sta 	vector+1
-    55  21ed 6cf021             		jmp 	(vector)
+    51  2182 bd9321             		lda 	execTable,x 				; get address and go there.
+    52  2185 8d9121             		sta 	vector
+    53  2188 bd9421             		lda 	execTable+1,x
+    54  218b 8d9221             		sta 	vector+1
+    55  218e 6c9121             		jmp 	(vector)
     56                          
     57                          vector 										; cannot go in ZP if we move B
-    58  21f0 0000               		!word 	0
+    58  2191 0000               		!word 	0
     59                          
     60                          execTable
-    61  21f2 1a22               		!word 	Command_LDR  				; $0x Load Register
-    62  21f4 2822               		!word 	Command_STR  				; $1x Store Register
-    63  21f6 3622               		!word 	Command_ADD 				; $2x Add to Register
-    64  21f8 4922               		!word 	Command_SUB 				; $3x Sub from Register
-    65  21fa a522               		!word 	Command_MUL 				; $4x Multiply into Register
-    66  21fc e222               		!word 	Command_DIV 				; $5x Divide into Register
-    67  21fe 5c22               		!word 	Command_AND 				; $6x And into Register
-    68  2200 6e22               		!word 	Command_ORR 				; $7x Or with Register
-    69  2202 8022               		!word 	Command_XOR 				; $8x Xor into Register
-    70  2204 1923               		!word 	Command_BRA 				; $9x Branch always
-    71  2206 3523               		!word 	Command_BEQ 				; $Ax Branch zero
-    72  2208 3e23               		!word 	Command_BPL 				; $Bx Branch positive
-    73  220a 1222               		!word 	notImplemented 				; $Cx
-    74  220c 1222               		!word 	notImplemented 				; $Dx
-    75  220e 1222               		!word 	notImplemented 				; $Ex
-    76  2210 1222               		!word 	notImplemented 				; $Fx
+    61  2193 bb21               		!word 	Command_LDR  				; $0x Load Register
+    62  2195 c921               		!word 	Command_STR  				; $1x Store Register
+    63  2197 d721               		!word 	Command_ADD 				; $2x Add to Register
+    64  2199 ea21               		!word 	Command_SUB 				; $3x Sub from Register
+    65  219b 4622               		!word 	Command_MUL 				; $4x Multiply into Register
+    66  219d 8322               		!word 	Command_DIV 				; $5x Divide into Register
+    67  219f fd21               		!word 	Command_AND 				; $6x And into Register
+    68  21a1 0f22               		!word 	Command_ORR 				; $7x Or with Register
+    69  21a3 2122               		!word 	Command_XOR 				; $8x Xor into Register
+    70  21a5 ba22               		!word 	Command_BRA 				; $9x Branch always
+    71  21a7 d622               		!word 	Command_BEQ 				; $Ax Branch zero
+    72  21a9 df22               		!word 	Command_BPL 				; $Bx Branch positive
+    73  21ab e622               		!word 	Command_CALL 				; $Cx Call 6502 routine
+    74  21ad e622               		!word 	Command_CALL 				; $Dx Call 6502 routine
+    75  21af e622               		!word 	Command_CALL 				; $Ex Call 6502 routine
+    76  21b1 e622               		!word 	Command_CALL 				; $Fx Call 6502 routine
     77                          
     78                          notImplemented								; come here when not implemented.
-    79  2212 a2ee               		ldx 	#$EE
-    80  2214 8a                 		txa
-    81  2215 a8                 		tay
-    82  2216 03                 		see
+    79  21b3 a2ee               		ldx 	#$EE
+    80  21b5 8a                 		txa
+    81  21b6 a8                 		tay
+    82  21b7 03                 		see
     83                          halt
 
 ; ******** Source: main.asm
-    85  2217 4c1722             
+    85  21b8 4cb821             
 
-; ******** Source: simple.asm
+; ******** Source: src\simple.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
@@ -356,12 +295,12 @@
     16                          ; ***************************************************************************************************************
     17                          
     18                          Command_LDR:
-    19  221a 209222             		jsr 	EffectiveAddress
-    20  221d b114               		lda 	(eac),y
-    21  221f 8513               		sta 	register+1
-    22  2221 a114               		lda 	(eac,x)
-    23  2223 8512               		sta 	register		
-    24  2225 4cc021             		jmp 	execLoop
+    19  21bb 203322             		jsr 	EffectiveAddress
+    20  21be b114               		lda 	(eac),y
+    21  21c0 8513               		sta 	register+1
+    22  21c2 a114               		lda 	(eac,x)
+    23  21c4 8512               		sta 	register		
+    24  21c6 4c6121             		jmp 	execLoop
     25                          
     26                          ; ***************************************************************************************************************
     27                          ;
@@ -370,12 +309,12 @@
     30                          ; ***************************************************************************************************************
     31                          
     32                          Command_STR:
-    33  2228 209222             		jsr 	EffectiveAddress
-    34  222b a513               		lda 	register+1
-    35  222d 9114               		sta 	(eac),y
-    36  222f a512               		lda 	register		
-    37  2231 8114               		sta 	(eac,x)
-    38  2233 4cc021             		jmp 	execLoop
+    33  21c9 203322             		jsr 	EffectiveAddress
+    34  21cc a513               		lda 	register+1
+    35  21ce 9114               		sta 	(eac),y
+    36  21d0 a512               		lda 	register		
+    37  21d2 8114               		sta 	(eac,x)
+    38  21d4 4c6121             		jmp 	execLoop
     39                          
     40                          ; ***************************************************************************************************************
     41                          ;
@@ -384,15 +323,15 @@
     44                          ; ***************************************************************************************************************
     45                          
     46                          Command_ADD:
-    47  2236 209222             		jsr 	EffectiveAddress
-    48  2239 18                 		clc
-    49  223a a512               		lda 	register		
-    50  223c 6114               		adc 	(eac,x)
-    51  223e 8512               		sta 	register
-    52  2240 a513               		lda 	register+1
-    53  2242 7114               		adc 	(eac),y
-    54  2244 8513               		sta		register+1
-    55  2246 4cc021             		jmp 	execLoop
+    47  21d7 203322             		jsr 	EffectiveAddress
+    48  21da 18                 		clc
+    49  21db a512               		lda 	register		
+    50  21dd 6114               		adc 	(eac,x)
+    51  21df 8512               		sta 	register
+    52  21e1 a513               		lda 	register+1
+    53  21e3 7114               		adc 	(eac),y
+    54  21e5 8513               		sta		register+1
+    55  21e7 4c6121             		jmp 	execLoop
     56                          
     57                          ; ***************************************************************************************************************
     58                          ;
@@ -401,15 +340,15 @@
     61                          ; ***************************************************************************************************************
     62                          
     63                          Command_SUB:
-    64  2249 209222             		jsr 	EffectiveAddress
-    65  224c 38                 		sec
-    66  224d a512               		lda 	register		
-    67  224f e114               		sbc 	(eac,x)
-    68  2251 8512               		sta 	register
-    69  2253 a513               		lda 	register+1
-    70  2255 f114               		sbc 	(eac),y
-    71  2257 8513               		sta		register+1
-    72  2259 4cc021             		jmp 	execLoop
+    64  21ea 203322             		jsr 	EffectiveAddress
+    65  21ed 38                 		sec
+    66  21ee a512               		lda 	register		
+    67  21f0 e114               		sbc 	(eac,x)
+    68  21f2 8512               		sta 	register
+    69  21f4 a513               		lda 	register+1
+    70  21f6 f114               		sbc 	(eac),y
+    71  21f8 8513               		sta		register+1
+    72  21fa 4c6121             		jmp 	execLoop
     73                          
     74                          ; ***************************************************************************************************************
     75                          ;
@@ -418,14 +357,14 @@
     78                          ; ***************************************************************************************************************
     79                          
     80                          Command_AND:
-    81  225c 209222             		jsr 	EffectiveAddress
-    82  225f a512               		lda 	register		
-    83  2261 2114               		and 	(eac,x)
-    84  2263 8512               		sta 	register
-    85  2265 a513               		lda 	register+1
-    86  2267 3114               		and 	(eac),y
-    87  2269 8513               		sta		register+1
-    88  226b 4cc021             		jmp 	execLoop
+    81  21fd 203322             		jsr 	EffectiveAddress
+    82  2200 a512               		lda 	register		
+    83  2202 2114               		and 	(eac,x)
+    84  2204 8512               		sta 	register
+    85  2206 a513               		lda 	register+1
+    86  2208 3114               		and 	(eac),y
+    87  220a 8513               		sta		register+1
+    88  220c 4c6121             		jmp 	execLoop
     89                          
     90                          ; ***************************************************************************************************************
     91                          ;
@@ -434,14 +373,14 @@
     94                          ; ***************************************************************************************************************
     95                          
     96                          Command_ORR:
-    97  226e 209222             		jsr 	EffectiveAddress
-    98  2271 a512               		lda 	register		
-    99  2273 0114               		ora 	(eac,x)
-   100  2275 8512               		sta 	register
-   101  2277 a513               		lda 	register+1
-   102  2279 1114               		ora 	(eac),y
-   103  227b 8513               		sta		register+1
-   104  227d 4cc021             		jmp 	execLoop
+    97  220f 203322             		jsr 	EffectiveAddress
+    98  2212 a512               		lda 	register		
+    99  2214 0114               		ora 	(eac,x)
+   100  2216 8512               		sta 	register
+   101  2218 a513               		lda 	register+1
+   102  221a 1114               		ora 	(eac),y
+   103  221c 8513               		sta		register+1
+   104  221e 4c6121             		jmp 	execLoop
    105                          
    106                          ; ***************************************************************************************************************
    107                          ;
@@ -450,14 +389,14 @@
    110                          ; ***************************************************************************************************************
    111                          
    112                          Command_XOR:
-   113  2280 209222             		jsr 	EffectiveAddress
-   114  2283 a512               		lda 	register		
-   115  2285 4114               		eor 	(eac,x)
-   116  2287 8512               		sta 	register
-   117  2289 a513               		lda 	register+1
-   118  228b 5114               		eor 	(eac),y
-   119  228d 8513               		sta		register+1
-   120  228f 4cc021             		jmp 	execLoop
+   113  2221 203322             		jsr 	EffectiveAddress
+   114  2224 a512               		lda 	register		
+   115  2226 4114               		eor 	(eac,x)
+   116  2228 8512               		sta 	register
+   117  222a a513               		lda 	register+1
+   118  222c 5114               		eor 	(eac),y
+   119  222e 8513               		sta		register+1
+   120  2230 4c6121             		jmp 	execLoop
    121                          
    122                          ; ***************************************************************************************************************
    123                          ;
@@ -466,21 +405,21 @@
    126                          ; ***************************************************************************************************************
    127                          
    128                          EffectiveAddress:
-   129  2292 a516               		lda 	instr
-   130  2294 0a                 		asl 	
-   131  2295 8514               		sta 	eac
-   132  2297 a517               		lda 	instr+1
-   133  2299 290f               		and 	#$0F
-   134  229b 2a                 		rol 	
-   135  229c 6924               		adc 	#SystemVariables >> 8
-   136  229e 8515               		sta 	eac+1
-   137  22a0 a001               		ldy 	#1
-   138  22a2 a200               		ldx 	#0
+   129  2233 a516               		lda 	instr
+   130  2235 0a                 		asl 	
+   131  2236 8514               		sta 	eac
+   132  2238 a517               		lda 	instr+1
+   133  223a 290f               		and 	#$0F
+   134  223c 2a                 		rol 	
+   135  223d 6924               		adc 	#SystemVariables >> 8
+   136  223f 8515               		sta 	eac+1
+   137  2241 a001               		ldy 	#1
+   138  2243 a200               		ldx 	#0
 
 ; ******** Source: main.asm
-    86  22a4 60                 
+    86  2245 60                 
 
-; ******** Source: multiply.asm
+; ******** Source: src\multiply.asm
      1                          ; *******************************************************************************************
      2                          ; *******************************************************************************************
      3                          ;
@@ -499,17 +438,17 @@
     16                          ; *******************************************************************************************
     17                          
     18                          Command_MUL:
-    19  22a5 209222             		jsr 	EffectiveAddress 			; but value into temp1
-    20  22a8 b114               		lda 	(eac),y
-    21  22aa 851b               		sta 	temp1+1
-    22  22ac a114               		lda 	(eac,x)
-    23  22ae 851a               		sta 	temp1
-    24  22b0 a512               		lda 	register 					; register into temp0 and multiply.
-    25  22b2 8518               		sta 	temp0
-    26  22b4 a513               		lda 	register+1
-    27  22b6 8519               		sta 	temp0+1
-    28  22b8 20be22             		jsr 	Multiply
-    29  22bb 4cc021             		jmp 	execLoop
+    19  2246 203322             		jsr 	EffectiveAddress 			; but value into temp1
+    20  2249 b114               		lda 	(eac),y
+    21  224b 851b               		sta 	temp1+1
+    22  224d a114               		lda 	(eac,x)
+    23  224f 851a               		sta 	temp1
+    24  2251 a512               		lda 	register 					; register into temp0 and multiply.
+    25  2253 8518               		sta 	temp0
+    26  2255 a513               		lda 	register+1
+    27  2257 8519               		sta 	temp0+1
+    28  2259 205f22             		jsr 	Multiply
+    29  225c 4c6121             		jmp 	execLoop
     30                          
     31                          ; *******************************************************************************************
     32                          ;
@@ -518,32 +457,32 @@
     35                          ; *******************************************************************************************
     36                          
     37                          Multiply:
-    38  22be a900               		lda 	#0 							; zero total.
-    39  22c0 8512               		sta 	register
-    40  22c2 8513               		sta 	register+1
+    38  225f a900               		lda 	#0 							; zero total.
+    39  2261 8512               		sta 	register
+    40  2263 8513               		sta 	register+1
     41                          _MultLoop:
-    42  22c4 4619               		lsr 	temp0+1
-    43  22c6 6618               		ror 	temp0	
-    44  22c8 900d               		bcc 	_MultNoAdd
-    45  22ca 18                 		clc
-    46  22cb a51a               		lda 	temp1		
-    47  22cd 6512               		adc 	register
-    48  22cf 8512               		sta 	register
-    49  22d1 a51b               		lda 	temp1+1
-    50  22d3 6513               		adc 	register+1
-    51  22d5 8513               		sta 	register+1
+    42  2265 4619               		lsr 	temp0+1
+    43  2267 6618               		ror 	temp0	
+    44  2269 900d               		bcc 	_MultNoAdd
+    45  226b 18                 		clc
+    46  226c a51a               		lda 	temp1		
+    47  226e 6512               		adc 	register
+    48  2270 8512               		sta 	register
+    49  2272 a51b               		lda 	temp1+1
+    50  2274 6513               		adc 	register+1
+    51  2276 8513               		sta 	register+1
     52                          _MultNoAdd:
-    53  22d7 061a               		asl 	temp1
-    54  22d9 261b               		rol 	temp1+1
-    55  22db a518               		lda 	temp0
-    56  22dd 0519               		ora 	temp0+1
-    57  22df d0e3               		bne 	_MultLoop
-    58  22e1 60                 		rts
+    53  2278 061a               		asl 	temp1
+    54  227a 261b               		rol 	temp1+1
+    55  227c a518               		lda 	temp0
+    56  227e 0519               		ora 	temp0+1
+    57  2280 d0e3               		bne 	_MultLoop
+    58  2282 60                 		rts
 
 ; ******** Source: main.asm
     87                          
 
-; ******** Source: divide.asm
+; ******** Source: src\divide.asm
      1                          ; *******************************************************************************************
      2                          ; *******************************************************************************************
      3                          ;
@@ -562,13 +501,13 @@
     16                          ; *******************************************************************************************
     17                          
     18                          Command_DIV:
-    19  22e2 209222             		jsr 	EffectiveAddress 			; but value into temp1
-    20  22e5 b114               		lda 	(eac),y
-    21  22e7 8519               		sta 	temp0+1
-    22  22e9 a114               		lda 	(eac,x)
-    23  22eb 8518               		sta 	temp0
-    24  22ed 20f322             		jsr 	Divide
-    25  22f0 4cc021             		jmp 	execLoop
+    19  2283 203322             		jsr 	EffectiveAddress 			; but value into temp1
+    20  2286 b114               		lda 	(eac),y
+    21  2288 8519               		sta 	temp0+1
+    22  228a a114               		lda 	(eac,x)
+    23  228c 8518               		sta 	temp0
+    24  228e 209422             		jsr 	Divide
+    25  2291 4c6121             		jmp 	execLoop
     26                          
     27                          ; *******************************************************************************************
     28                          ;
@@ -580,38 +519,38 @@
     34                          ;	register = Q temp0 = M temp1 = A
     35                          ;
     36                          Divide:
-    37  22f3 a900               		lda 	#0 							; set A = 0
-    38  22f5 851a               		sta 	temp1
-    39  22f7 851b               		sta 	temp1+1
-    40  22f9 a010               		ldy 	#16 						; loop round 16 times.
+    37  2294 a900               		lda 	#0 							; set A = 0
+    38  2296 851a               		sta 	temp1
+    39  2298 851b               		sta 	temp1+1
+    40  229a a010               		ldy 	#16 						; loop round 16 times.
     41                          _DivLoop:
-    42  22fb 0612               		asl 	register 					; shift QA left. Q first
-    43  22fd 2613               		rol 	register+1
+    42  229c 0612               		asl 	register 					; shift QA left. Q first
+    43  229e 2613               		rol 	register+1
     44                          		;
-    45  22ff 261a               		rol 	temp1 						; shift A left carrying in.
-    46  2301 261b               		rol 	temp1+1		
+    45  22a0 261a               		rol 	temp1 						; shift A left carrying in.
+    46  22a2 261b               		rol 	temp1+1		
     47                          		;
-    48  2303 38                 		sec 								; calculate A-M, result in XA/C
-    49  2304 a51a               		lda 	temp1
-    50  2306 e518               		sbc 	temp0
-    51  2308 aa                 		tax
-    52  2309 a51b               		lda 	temp1+1
-    53  230b e519               		sbc 	temp0+1
-    54  230d 9006               		bcc 	_DivNoUpdate 				; if A >= M then store result and set Q bit 0.
+    48  22a4 38                 		sec 								; calculate A-M, result in XA/C
+    49  22a5 a51a               		lda 	temp1
+    50  22a7 e518               		sbc 	temp0
+    51  22a9 aa                 		tax
+    52  22aa a51b               		lda 	temp1+1
+    53  22ac e519               		sbc 	temp0+1
+    54  22ae 9006               		bcc 	_DivNoUpdate 				; if A >= M then store result and set Q bit 0.
     55                          		;
-    56  230f 851b               		sta 	temp1+1
-    57  2311 861a               		stx 	temp1
-    58  2313 e612               		inc 	register 					; we know it is even.
+    56  22b0 851b               		sta 	temp1+1
+    57  22b2 861a               		stx 	temp1
+    58  22b4 e612               		inc 	register 					; we know it is even.
     59                          		;
     60                          _DivNoUpdate:		
-    61  2315 88                 		dey
-    62  2316 d0e3               		bne 	_DivLoop
-    63  2318 60                 		rts
+    61  22b6 88                 		dey
+    62  22b7 d0e3               		bne 	_DivLoop
+    63  22b9 60                 		rts
 
 ; ******** Source: main.asm
     88                          
 
-; ******** Source: branch.asm
+; ******** Source: src\branch.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
@@ -630,22 +569,22 @@
     16                          ; ***************************************************************************************************************
     17                          
     18                          Command_BRA:
-    19  2319 a517               		lda 	instr+1 					; needs sign extend.
-    20  231b 2908               		and 	#$08 						; if bit 11 is set.
-    21  231d f006               		beq 	+
-    22  231f a517               		lda 	instr+1
-    23  2321 09f0               		ora 	#$F0
-    24  2323 8517               		sta 	instr+1
+    19  22ba a517               		lda 	instr+1 					; needs sign extend.
+    20  22bc 2908               		and 	#$08 						; if bit 11 is set.
+    21  22be f006               		beq 	+
+    22  22c0 a517               		lda 	instr+1
+    23  22c2 09f0               		ora 	#$F0
+    24  22c4 8517               		sta 	instr+1
     25                          +		
-    26  2325 18                 		clc 								; now add to the pctr
-    27  2326 a516               		lda 	instr
-    28  2328 6510               		adc 	pctr
-    29  232a 8510               		sta 	pctr
-    30  232c a517               		lda 	instr+1
-    31  232e 6511               		adc 	pctr+1
-    32  2330 8511               		sta 	pctr+1
+    26  22c6 18                 		clc 								; now add to the pctr
+    27  22c7 a516               		lda 	instr
+    28  22c9 6510               		adc 	pctr
+    29  22cb 8510               		sta 	pctr
+    30  22cd a517               		lda 	instr+1
+    31  22cf 6511               		adc 	pctr+1
+    32  22d1 8511               		sta 	pctr+1
     33                          
-    34  2332 4cc021             		jmp 	execLoop
+    34  22d3 4c6121             		jmp 	execLoop
     35                          
     36                          ; ***************************************************************************************************************
     37                          ;
@@ -654,10 +593,10 @@
     40                          ; ***************************************************************************************************************
     41                          
     42                          Command_BEQ:
-    43  2335 a512               		lda 	register
-    44  2337 0513               		ora 	register+1
-    45  2339 f0de               		beq 	Command_BRA
-    46  233b 4cc021             		jmp 	execLoop
+    43  22d6 a512               		lda 	register
+    44  22d8 0513               		ora 	register+1
+    45  22da f0de               		beq 	Command_BRA
+    46  22dc 4c6121             		jmp 	execLoop
     47                          
     48                          ; ***************************************************************************************************************
     49                          ;
@@ -666,14 +605,106 @@
     52                          ; ***************************************************************************************************************
     53                          
     54                          Command_BPL:
-    55  233e a513               		lda 	register+1
-    56  2340 10d7               		bpl 	Command_BRA
-    57  2342 4cc021             		jmp 	execLoop
+    55  22df a513               		lda 	register+1
+    56  22e1 10d7               		bpl 	Command_BRA
+    57  22e3 4c6121             		jmp 	execLoop
 
 ; ******** Source: main.asm
     89                          
 
-; ******** Source: utility.asm
+; ******** Source: src\call.asm
+     1                          ; *******************************************************************************************
+     2                          ; *******************************************************************************************
+     3                          ;
+     4                          ;       File:           call.asm
+     5                          ;       Purpose:        Call and Return
+     6                          ;      	Created:    	28th December 2020
+     7                          ;       Author:         Paul Robson (paul@robson.org.uk)
+     8                          ;
+     9                          ; *******************************************************************************************
+    10                          ; *******************************************************************************************
+    11                          
+    12                          ; *******************************************************************************************
+    13                          ;
+    14                          ;									CALL routine
+    15                          ;
+    16                          ; *******************************************************************************************
+    17                          
+    18                          Command_CALL:
+    19  22e6 a510               		lda 	pctr 						; push PC on stack
+    20  22e8 48                 		pha
+    21  22e9 a511               		lda 	pctr+1
+    22  22eb 48                 		pha
+    23                          		;
+    24  22ec 0616               		asl 	instr 						; instr x 4 => address
+    25  22ee 2617               		rol 	instr+1
+    26  22f0 0616               		asl 	instr
+    27  22f2 2617               		rol 	instr+1
+    28  22f4 a516               		lda 	instr 						; copy to vector
+    29  22f6 8d9121             		sta 	vector
+    30  22f9 a517               		lda 	instr+1
+    31  22fb 8d9221             		sta 	vector+1
+    32  22fe 200a23             		jsr 	_CCCallInstr 				; call that routine.
+    33                          		;
+    34  2301 68                 		pla 								; restore PC
+    35  2302 8511               		sta 	pctr+1
+    36  2304 68                 		pla
+    37  2305 8510               		sta 	pctr
+    38  2307 4c6121             		jmp 	execLoop 					; and go round
+    39                          
+    40                          _CCCallInstr:
+    41  230a 6c9121             		jmp 	(vector)						
+    42                          
+    43                          ; *******************************************************************************************
+    44                          ;
+    45                          ;										Return Code
+    46                          ;
+    47                          ; *******************************************************************************************
+    48                          
+    49  230d 000000007379732e...		+define	"sys.return",0,0
+    50                          ReturnCode:
+    51  231c 68                 		pla 								; remove JSR to exec routine, call to return code.
+    52  231d 68                 		pla
+    53  231e 68                 		pla 		
+    54  231f 68                 		pla
+    55  2320 60                 		rts
+    56                          
+    57                          ; *******************************************************************************************
+    58                          ;
+    59                          ;										Halt Code
+    60                          ;
+    61                          ; *******************************************************************************************
+    62                          
+    63  2321 000000007379732e...		+define "sys.halt",0,0
+    64                          HaltCode:		
+    65  2330 a92a               		lda 	#42
+    66  2332 204421             		jsr 	PrintCharacter
+    67  2335 a2ee               		ldx 	#$EE
+    68  2337 8a                 		txa
+    69  2338 a8                 		tay
+    70  2339 03                 		see
+    71                          HaltNow:
+    72  233a 4c3a23             		jmp 	HaltNow
+    73                          
+    74                          ; *******************************************************************************************
+    75                          ;
+    76                          ;											Print 
+    77                          ;
+    78                          ; *******************************************************************************************
+    79                          
+    80  233d 000001007379732e...		+define	"sys.print.hex",1,0
+    81                          PrintHexCode:		
+    82  2350 a513               		lda 	register+1
+    83  2352 20ad23             		jsr 	PrintHex		
+    84  2355 a512               		lda 	register
+    85  2357 20ad23             		jsr 	PrintHex
+    86  235a 60                 		rts
+    87                          
+
+; ******** Source: main.asm
+    90                          
+
+; ******** Source: src\utility.asm
      1                          ; ***************************************************************************************************************
      2                          ; ***************************************************************************************************************
      3                          ;
@@ -692,26 +723,26 @@
     16                          ; ***************************************************************************************************************
     17                          
     18                          ClearMemory:
-    19  2345 ad0c21             		lda 	initStart 					; start erasing from here
-    20  2348 8518               		sta 	temp0
-    21  234a ad0d21             		lda 	initStart+1
-    22  234d 8519               		sta 	temp0+1
-    23  234f a000               		ldy 	#0		
+    19  235b ad0c21             		lda 	initStart 					; start erasing from here
+    20  235e 8518               		sta 	temp0
+    21  2360 ad0d21             		lda 	initStart+1
+    22  2363 8519               		sta 	temp0+1
+    23  2365 a000               		ldy 	#0		
     24                          _CLMLoop:
-    25  2351 a518               		lda 	temp0 						; done the lot ?
-    26  2353 cd0e21             		cmp 	initEnd
-    27  2356 d008               		bne 	_CLMClear
-    28  2358 a519               		lda 	temp0+1
-    29  235a cd0f21             		cmp 	initEnd+1
-    30  235d d001               		bne 	_CLMClear
-    31  235f 60                 		rts		
+    25  2367 a518               		lda 	temp0 						; done the lot ?
+    26  2369 cd0e21             		cmp 	initEnd
+    27  236c d008               		bne 	_CLMClear
+    28  236e a519               		lda 	temp0+1
+    29  2370 cd0f21             		cmp 	initEnd+1
+    30  2373 d001               		bne 	_CLMClear
+    31  2375 60                 		rts		
     32                          _CLMClear:
-    33  2360 98                 		tya 								; zero location and advance.
-    34  2361 9118               		sta 	(temp0),y
-    35  2363 e618               		inc 	temp0
-    36  2365 d0ea               		bne 	_CLMLoop
-    37  2367 e619               		inc 	temp0+1
-    38  2369 4c5123             		jmp 	_CLMLoop
+    33  2376 98                 		tya 								; zero location and advance.
+    34  2377 9118               		sta 	(temp0),y
+    35  2379 e618               		inc 	temp0
+    36  237b d0ea               		bne 	_CLMLoop
+    37  237d e619               		inc 	temp0+1
+    38  237f 4c6723             		jmp 	_CLMLoop
     39                          
     40                          ; ***************************************************************************************************************
     41                          ;
@@ -720,21 +751,21 @@
     44                          ; ***************************************************************************************************************
     45                          
     46                          ShowDebugInfo:
-    47  236c a511               		lda 	pctr+1
-    48  236e 209723             		jsr 	PrintHex
-    49  2371 a510               		lda 	pctr
-    50  2373 209723             		jsr 	PrintHex
-    51  2376 a517               		lda 	instr+1
-    52  2378 209023             		jsr 	PrintHexSpace
-    53  237b a516               		lda 	instr
-    54  237d 209723             		jsr 	PrintHex
-    55  2380 a513               		lda 	register+1
-    56  2382 209023             		jsr 	PrintHexSpace
-    57  2385 a512               		lda 	register
-    58  2387 209723             		jsr 	PrintHex
-    59  238a a93a               		lda 	#58
-    60  238c 205221             		jsr 	PrintCharacter
-    61  238f 60                 		rts		
+    47  2382 a511               		lda 	pctr+1
+    48  2384 20ad23             		jsr 	PrintHex
+    49  2387 a510               		lda 	pctr
+    50  2389 20ad23             		jsr 	PrintHex
+    51  238c a517               		lda 	instr+1
+    52  238e 20a623             		jsr 	PrintHexSpace
+    53  2391 a516               		lda 	instr
+    54  2393 20ad23             		jsr 	PrintHex
+    55  2396 a513               		lda 	register+1
+    56  2398 20a623             		jsr 	PrintHexSpace
+    57  239b a512               		lda 	register
+    58  239d 20ad23             		jsr 	PrintHex
+    59  23a0 a93a               		lda 	#58
+    60  23a2 204421             		jsr 	PrintCharacter
+    61  23a5 60                 		rts		
     62                          
     63                          ; ***************************************************************************************************************
     64                          ;
@@ -743,65 +774,75 @@
     67                          ; ***************************************************************************************************************
     68                          
     69                          PrintHexSpace:
-    70  2390 48                 		pha
-    71  2391 a920               		lda 	#' '
-    72  2393 205221             		jsr 	PrintCharacter
-    73  2396 68                 		pla
+    70  23a6 48                 		pha
+    71  23a7 a920               		lda 	#' '
+    72  23a9 204421             		jsr 	PrintCharacter
+    73  23ac 68                 		pla
     74                          PrintHex:        
-    75  2397 48                 		pha
-    76  2398 4a                 		lsr     
-    77  2399 4a                 		lsr     
-    78  239a 4a                 		lsr     
-    79  239b 4a                 		lsr     
-    80  239c 20a023             		jsr     _PrintNibble
-    81  239f 68                 		pla
+    75  23ad 48                 		pha
+    76  23ae 4a                 		lsr     
+    77  23af 4a                 		lsr     
+    78  23b0 4a                 		lsr     
+    79  23b1 4a                 		lsr     
+    80  23b2 20b623             		jsr     _PrintNibble
+    81  23b5 68                 		pla
     82                          _PrintNibble:
-    83  23a0 48                 		pha
-    84  23a1 290f               		and     #15
-    85  23a3 c90a               		cmp     #10
-    86  23a5 9002               		bcc     +
-    87  23a7 6906               		adc     #6
+    83  23b6 48                 		pha
+    84  23b7 290f               		and     #15
+    85  23b9 c90a               		cmp     #10
+    86  23bb 9002               		bcc     +
+    87  23bd 6906               		adc     #6
     88                          +
-    89  23a9 6930               		adc     #48
-    90  23ab 205221             		jsr     PrintCharacter
-    91  23ae 68                 		pla 
-    92  23af 60                 		rts
+    89  23bf 6930               		adc     #48
+    90  23c1 204421             		jsr     PrintCharacter
+    91  23c4 68                 		pla 
+    92  23c5 60                 		rts
 
 ; ******** Source: main.asm
-    90                          
     91                          
-    92                          ; ***************************************************************************************************************
-    93                          ;
-    94                          ;						Testing code goes here (this is for non runtime builds)
-    95                          ;
-    96                          ; ***************************************************************************************************************
-    97                          
-    98                          codeSpace:
-    99  23b0 20b521             		jsr 	execRuntime
-   100  23b3 0000               		+cmd 	0,0
-   101  23b5 5001               		+cmd 	5,1
-   102  23b7 ffff               		!word 	$FFFF
-   103                          
-   104                          ; ***************************************************************************************************************
-   105                          ;
-   106                          ;					Then the variables with predefined values, constants, addresses etc.
-   107                          ;
-   108                          ; ***************************************************************************************************************
-   109                          
-   110  23b9 eaeaeaeaeaeaeaea...		!align 	255,0 						; put on page boundary.
-   111                          SystemVariables:
-   112  2400 1027               		!word 	10000
-   113  2402 c800               		!word 	200
-   114  2404 2800               		!word 	40
-   115                          
-   116                          ; ***************************************************************************************************************
-   117                          ;
-   118                          ;									Then the uninitialised variables
-   119                          ;
-   120                          ; ***************************************************************************************************************
-   121                          
-   122                          UnnitialisedVariables:
-   123                          		!if target > 0 { 					; allocate memory if not runtime build.
-   124  2406 ffffffffffffffff...			!fill 	variableMax * 2,$FF
-   125                          		}
-   126                          EndVariableSpace:
+    92                          
+    93                          ; ***************************************************************************************************************
+    94                          ;
+    95                          ;						Testing code goes here (this is for non runtime builds)
+    96                          ;
+    97                          ; ***************************************************************************************************************
+    98                          
+    99                          codeSpace:
+   100  23c6 205621             		jsr 	execRuntime
+   101  23c9 0001               		+cmd 	0,1
+   102  23cb c8f6               		+call 	cs2
+   103  23cd c8f6               		+call 	cs2
+   104  23cf c8f6               		+call 	cs2
+   105  23d1 c8d4               		+call 	PrintHexCode
+   106  23d3 c8d4               		+call 	PrintHexCode
+   107  23d5 c8cc               		+call	HaltCode
+   108                          
+   109  23d7 ea                 		!align 	3,0
+   110                          cs2		
+   111  23d8 205621             		jsr 	execRuntime
+   112  23db 4002               		+cmd 	4,2
+   113  23dd c8c7               		+call 	ReturnCode
+   114                          
+   115                          ; ***************************************************************************************************************
+   116                          ;
+   117                          ;					Then the variables with predefined values, constants, addresses etc.
+   118                          ;
+   119                          ; ***************************************************************************************************************
+   120                          
+   121  23df eaeaeaeaeaeaeaea...		!align 	255,0 						; put on page boundary.
+   122                          SystemVariables:
+   123  2400 1027               		!word 	10000
+   124  2402 0200               		!word 	2
+   125  2404 0a00               		!word 	10
+   126                          
+   127                          ; ***************************************************************************************************************
+   128                          ;
+   129                          ;									Then the uninitialised variables
+   130                          ;
+   131                          ; ***************************************************************************************************************
+   132                          
+   133                          UnnitialisedVariables:
+   134                          		!if target > 0 { 					; allocate memory if not runtime build.
+   135  2406 ffffffffffffffff...			!fill 	variableMax * 2,$FF
+   136                          		}
+   137                          EndVariableSpace:
