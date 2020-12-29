@@ -4,6 +4,7 @@ CMAKE = mingw32-make
 CDEL = del /Q
 CDELQ = >NUL
 APPSTEM = .exe
+DEVICE = -l COM4
 S = \\
 else
 CCOPY = cp
@@ -12,6 +13,7 @@ CDELQ =
 CMAKE = make
 APPSTEM =
 S = /
+DEVICE =
 endif
 
 .PHONY: prebuild xemu fpga test
@@ -36,6 +38,6 @@ fpga : $(wildcard *.asm)
 	$(ASSEMBLER) -Dtarget=1 --setpc 8448 $(ASMCMD)
 	python buildlist.py
 	python addheader.py main.prg
-	../bin/m65 -l COM4 -F -r main.prg
+	../bin/m65 $(DEVICE) -F -r main.prg
 	$(CDEL) dump.mem memory.dump $(CDELQ)
 	
